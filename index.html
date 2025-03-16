@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Алгоритм Гилберта — Джонсона — Кирти, 2д фигуры, Javascript реализация</title>
+		<script src="js/vector.js"></script>
+		<script src="js/color.js"></script>
+		<script src="js/draw.js"></script>
+		<script src="js/map.js"></script>
+		<script src="js/raycast.js"></script>
+	</head>
+	<body>
+		<canvas id="raycast-canvas" width="1280" height="720" ></canvas>
+		<style>
+			#gjk-canvas {
+				margin: 0 auto;
+				width: 100%;
+			}
+		</style>
+		<script>
+			const canvas   = document.querySelector( "#raycast-canvas" );
+			const context  = canvas.getContext( "2d" );
+			context.font   = "20px roboto";
+			const width    = canvas.width;
+			const height   = canvas.height;
+			const widthH   = parseInt( canvas.width / 2 );
+			const heightH  = parseInt( canvas.height / 2 );
+			const fov      = Math.PI / 3; //Угол обзора
+			const fovHalf  = fov * 0.5;
+			const fovStep  = fov / canvas.width; //Шаг угла при проходе по экрану
+			const viewDist = 10; //Дистанция отрисовки
+			const camDepth = widthH / Math.tan( fovHalf ); //Глубина проекции
+			const accuracy = parseInt( canvas.width / 10 ); //Количество итерации за один проход по клетке, влияет на точность отображения
+			//Уровень
+			const map      = [ 
+								0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
+								0 , 0 , 0 , 1 , 1 , 0 , 1 , 1 , 1 , 0 ,
+								1 , 0 , 1 , 1 , 0 , 0 , 0 , 0 , 1 , 0 ,
+								0 , 0 , 0 , 1 , 0 , 1 , 0 , 0 , 0 , 0 ,
+								0 , 0 , 1 , 1 , 0 , 1 , 0 , 0 , 1 , 0 ,
+								0 , 0 , 0 , 1 , 1 , 1 , 1 , 0 , 1 , 0 ,
+								1 , 0 , 0 , 0 , 0 , 1 , 0 , 0 , 1 , 0 ,
+								0 , 0 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
+								0 , 1 , 1 , 1 , 0 , 0 , 1 , 1 , 1 , 0 ,
+								0 , 0 , 0 , 1 , 0 , 0 , 0 , 0 , 0 , 0
+							 ];
+			const level     = new Map( 10 , 10 , map );
+			const cellWidth = height / level.size.x;
+			//Позиция камеры
+			let   cameraPosition = new Vector3F( 0.5 , 0 , 0.5 );
+			let   cameraAngle    = 1.57;
+			const cameraRotAngle = 0.1;
+			const cameraSpeed    = 0.1;
+			const draw           = new Draw();
+			const caster         = new Raycaster();
+			
+			window.addEventListener( "keydown" , function( e ) {
+				if( e.keyCode == 87 ) {
+					cameraPosition = cameraPosition.Plus( caster.CreateVectorFromAngle( cameraSpeed , cameraAngle ) );
+				}
+				if( e.keyCode == 83 ) {
+					cameraPosition = cameraPosition.Subtract( caster.CreateVectorFromAngle( cameraSpeed , cameraAngle ) );
+				}
+				if( e.keyCode == 65 ) {
+					cameraAngle -= cameraRotAngle;
+				}
+				if( e.keyCode == 68 ) {
+					cameraAngle += cameraRotAngle;
+				}
+			});
+			
+			function RenderRays() {
+				draw.DrawSky();   //Рисует небо
+				draw.DrawFloor(); //Рисует пол
+				let distance = 0; //Иниациализация переменной для дистанции
+				let angle    = -fovHalf; //Стартовый угол
+				for( let w = 0; w < width; w++ ) { //Проходит по ширине экрана
+					let rayAngle = cameraAngle + angle; //Угол самого луча
+					if( distance = caster.Cast( rayAngle ) ) draw.DrawWall( w , distance * Math.cos( angle ) ); //Если дистанция не равна нулю, рисуем стену
+					angle       += fovStep; //Повышает угол на один шаг 
+				}
+			}
+
+			//Основной цикл
+			function Frame() {
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				RenderRays();
+				window.requestAnimationFrame( Frame );
+			}
+			window.requestAnimationFrame( Frame );
+
+			canvas.addEventListener("click", async () => {
+					await canvas.requestFullscreen();
+					await canvas.requestPointerLock( {
+					unadjustedMovement: true,
+				});
+			});
+		</script>
+	</body>
+</html>
